@@ -113,13 +113,18 @@ class YouTubeAutomationAgent {
       
       // Initialize scheduler
       this.logger.info('Setting up automation scheduler...');
-      this.scheduler = new DailyAutomation(this.agents, this.db, {
+           this.scheduler = new DailyAutomation(this.agents, this.db, {
         generateContent: input => this.queueScheduledContent(input)
       });
       await this.scheduler.initialize();
 
-      if (await this.db.getSetting('automation_paused') === 'true') {
+      const schedulerExplicitlyEnabled = process.env.ENABLE_SCHEDULER === 'true';
+      const pausedInDb = await this.db.getSetting('automation_paused') === 'true';
+      if (!schedulerExplicitlyEnabled || pausedInDb) {
         await this.scheduler.pauseAutomation();
+        if (!schedulerExplicitlyEnabled) {
+          this.logger.warn('Automation scheduler is paused by default. Set ENABLE_SCHEDULER=true in .env to allow it to run automatically.');
+        }
       }
       
       this.isInitialized = true;
